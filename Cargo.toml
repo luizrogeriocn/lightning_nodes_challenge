@@ -1,0 +1,9 @@
+[package]
+name = "bipa_lightning"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-web = "4"
+sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite"]}
+tokio = { version = "1.20.0", features = ["macros"]}
