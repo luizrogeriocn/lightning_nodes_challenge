@@ -41,7 +41,7 @@ curl http://127.0.0.1:8080/nodes
 
 Or visit it in your browser [Get /nodes](http://127.0.0.1:8080/nodes)
 
-When you first run the server, there will be no records to be displayed. After roughly a minute, the importation subroutine will run (it prints to the terminal when it starts and ends) and then we are able to see the results by refreshing the page.
+When you first run the server, there will be no records to be displayed. After roughly a minute, the import subroutine will run (it prints to the terminal when it starts and ends) and then we are able to see the results by refreshing the page.
 
 ## What was the reason for your focus? What problems were you trying to solve?
 
@@ -80,6 +80,7 @@ These are areas that are completely lacking but that I would try to implement if
 familiarity with the Rust language and tooling:
 
 - No pagination on GET /nodes
+- No transaction/bulk insertion when importing
 - No error handling
 - No unit/integration tests
 - No observability
