@@ -6,6 +6,7 @@ use chrono::{DateTime};
 
 mod constants;
 mod database;
+mod fetch_nodes;
 
 fn sats_to_btc(sats: i64) -> Decimal {
     Decimal::from(sats) / Decimal::from(100_000_000u64)
@@ -64,6 +65,9 @@ async fn get_nodes(pool: web::Data<SqlitePool>) -> impl Responder {
 async fn main() -> std::io::Result<()> {
     // Database connection
     let pool = database::setup_and_connect().await;
+
+    // Cron job
+    fetch_nodes::spawn_fetch_nodes_job(pool.clone());
 
     // Start the HTTP server
     HttpServer::new(move || {
