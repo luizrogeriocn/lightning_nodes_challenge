@@ -1,47 +1,11 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use sqlx::{migrate::MigrateDatabase, FromRow, Sqlite, SqlitePool};
-use serde::{Serialize};
+use sqlx::{FromRow, SqlitePool};
+use serde::{Serialize, Deserialize};
 use rust_decimal::Decimal;
 use chrono::{DateTime};
 
-// Location for the sqlite database file
-const DB_URL: &str = "sqlite://sqlite.db";
-
-async fn db() -> SqlitePool {
-    // Create the database if it doesn't exist
-    if !Sqlite::database_exists(DB_URL).await.unwrap_or(false) {
-        println!("Creating database {}", DB_URL);
-        match Sqlite::create_database(DB_URL).await {
-            Ok(_) => println!("Create db success"),
-            Err(error) => panic!("error: {}", error),
-        }
-    } else {
-        println!("Database already exists")
-    }
-    
-    // Database connection
-    let db = SqlitePool::connect(DB_URL).await.unwrap();
-
-    // Perform database migrations
-    let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    let migrations = std::path::Path::new(&crate_dir).join("./migrations");
-    let migration_results = sqlx::migrate::Migrator::new(migrations)
-        .await
-        .unwrap()
-        .run(&db)
-        .await;
-
-    match migration_results {
-        Ok(_) => println!("Migration success"),
-        Err(error) => {
-            panic!("error: {}", error);
-        }
-    }
-
-    println!("migration: {:?}", migration_results);
-
-    db
-}
+mod constants;
+mod database;
 
 fn sats_to_btc(sats: i64) -> Decimal {
     Decimal::from(sats) / Decimal::from(100_000_000u64)
@@ -53,7 +17,7 @@ fn timestamp_from_epoch(epoch: i64) -> String {
         .to_string()
 }
 
-#[derive(Serialize, FromRow)]
+#[derive(Serialize, Deserialize, FromRow, Debug)]
 struct Node {
     public_key: String,
     alias: String,
@@ -75,14 +39,14 @@ struct NodeResponse {
     first_seen: String,
 }
 
-async fn get_node_list(pool: web::Data<SqlitePool>) -> impl Responder {
-    // get nodes from the database
+async fn get_nodes(pool: web::Data<SqlitePool>) -> impl Responder {
+    // Get Nodes from the database
     let rows : Vec<Node> = sqlx::query_as("SELECT * FROM nodes;")
         .fetch_all(pool.get_ref())
         .await
         .unwrap();
 
-    // transform nodes
+    // Transform Nodes into NodeResponses
     let nodes: Vec<NodeResponse> = rows
         .into_iter()
         .map(|row| NodeResponse {
@@ -99,13 +63,13 @@ async fn get_node_list(pool: web::Data<SqlitePool>) -> impl Responder {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // Database connection
-    let pool = db().await;
+    let pool = database::setup_and_connect().await;
 
     // Start the HTTP server
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
-            .route("/nodes", web::get().to(get_node_list))
+            .route("/nodes", web::get().to(get_nodes))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
